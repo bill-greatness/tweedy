@@ -1,36 +1,52 @@
 package main
 
 import (
-	"fmt"
-	"github.com/dghubble/go-twitter/twitter"
-	"golang.org/x/oauth2"
-	"golang.org/x/oauth2/clientcredentials"
+	"flag"
+	"log"
 	"net/http"
+	"os"
+	"tweet/tweedy/auth"
+	"tweet/tweedy/config"
 )
 
 func main() {
-	fmt.Print("Welcome to tweedy!")
-	
-	// create router.
-	router := http.NewServeMux()
 
-}
+	const addr = "localhost:8080"
 
-// Get User Authenticated.
-func getClient() *twitter.Client{
-
-	config := &clientcredentials.Config{
-		ClientID:"Some ID Here", 
-		ClientSecret: "Some Secret Here",
-		TokenURL:"https://api.twitter.com/oauth2/token",
+	// read credentials from environment variables.
+	creds := &config.Config{
+		TwitterConsumerKey:    os.Getenv("TWITTER_API_KEY"),
+		TwitterConsumerSecret: os.Getenv("TWITTER_API_SECRET"),
 	}
 
-	client := config.Client(oauth2.NoContext)
-	
-	return twitter.NewClient(client)
+	// allow consumer credential flag to overide defaults.
+	consumerKey := flag.String("consumer-key", "", "Twitter Consumer Key")
+	consumerSecret := flag.String("consumer-secret", "", "Twitter Consumer Secret")
+	flag.Parse()
 
-}
+	if *consumerKey != "" {
+		creds.TwitterConsumerKey = *consumerKey
+	}
 
-func getTweets(){
+	if *consumerSecret != "" {
+		creds.TwitterConsumerSecret = *consumerSecret
+	}
 
+	if creds.TwitterConsumerKey == "" {
+		log.Fatal("Missing Twitter Consumer Key")
+	}
+
+	if creds.TwitterConsumerSecret == "" {
+		log.Fatal("Missing Twitter Consumer Secret")
+	}
+
+	log.Printf("Starting Tweedy Server on %s\n", addr)
+
+	err := http.ListenAndServe(addr, auth.New(creds))
+
+	if err != nil {
+		log.Fatal("ListenAndServe: ", err)
+	}
+
+	log.Fatal("Tweedy server active")
 }
